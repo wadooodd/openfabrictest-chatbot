@@ -46,7 +46,7 @@ def execute(request: SimpleText, ray: OpenfabricExecutionRay) -> SimpleText:
             # encoding the user ids
             user_input_ids = tokenizer.encode(text + tokenizer.eos_token, return_tensors='pt')
             # ading users input to history
-            bot_input_ids = torch.cat([chat_history_ids, user_input_ids], dim=-1) if len(chat_history_ids) > 0 else new_user_input_ids
+            bot_input_ids = torch.cat([chat_history_ids, user_input_ids], dim=-1) if len(chat_history_ids) > 0 else user_input_ids
             # generating response 
             chat_history_ids = model.generate(bot_input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
 
