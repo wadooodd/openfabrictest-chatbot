@@ -33,6 +33,17 @@ def config(configuration: ConfigClass):
 # Callback function called on each execution pass
 ############################################################
 
+def execute2(request: SimpleText, ray: OpenfabricExecutionRay) -> SimpleText:
+    output = []
+    model = pipeline('text-generation', model='microsoft/DialoGPT-medium', device=0)
+
+    for text in request.text:        
+        response = model(text, max_length=50)[0]['generated_text']
+        output.append(response)
+
+    return SimpleText(dict(text=output))
+
+
 def execute(request: SimpleText, ray: OpenfabricExecutionRay) -> SimpleText:
     #load model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
