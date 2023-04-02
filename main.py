@@ -6,11 +6,55 @@ from openfabric_pysdk.context import OpenfabricExecutionRay
 from openfabric_pysdk.loader import ConfigClass
 from time import time
 
+import nltk
+from nltk.corpus import wordnet
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from transformers import pipeline
 
+
+# Set up NLTK
+nltk.download('wordnet')
+
+def get_synonyms(word):
+    synonyms = set()
+    for syn in wordnet.synsets(word):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name())
+    return synonyms
+
+def generate_response(text):
+    # Check if the user input contains any science-related keywords
+    science_keywords = {"science", "biology", "chemistry", "physics"}
+    input_words = set(text.split())
+    if not input_words.intersection(science_keywords):
+        return "I'm sorry, I can only answer questions about science."
+
+    # Find the main science-related keyword in the user input
+    main_keyword = None
+    for word in input_words:
+        if word in science_keywords:
+            main_keyword = word
+            break
+
+    # Get synonyms for the main keyword
+    synonyms = get_synonyms(main_keyword)
+
+    # Generate a response using the synonyms
+    response = None
+    for synonym in synonyms:
+        input_text = text.replace(main_keyword, synonym)
+        generated_text = generator(input_text, max_length=1000, pad_token_id=tokenizer.eos_token_id)[0]['generated_text']
+        if generated_text != text:
+            response = generated_text
+            break
+
+    # If a response couldn't be generated using the synonyms, generate a default response
+    if not response:
+        response = generator("I'm sorry, I don't know the answer to that question.", max_length=1000, pad_token_id=tokenizer.eos_token_id)[0]['generated_text']
+
+    return response.strip()
 # Load the model
 # model = pipeline('text-generation', model='microsoft/DialoGPT-medium', device=0)
 # response = model(text, max_length=50)[0]['generated_text']
@@ -32,6 +76,14 @@ def config(configuration: ConfigClass):
 ############################################################
 # Callback function called on each execution pass
 ############################################################
+
+def execute3(request: SimpleText, ray: OpenfabricExecutionRay) -> SimpleText:
+    output = []
+    for text in request.text:
+        response = generate_response(text)
+        output.append(response)
+
+    return SimpleText(dict(text=output))
 
 def execute2(request: SimpleText, ray: OpenfabricExecutionRay) -> SimpleText:
     output = []
